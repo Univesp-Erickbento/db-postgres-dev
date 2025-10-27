@@ -1,6 +1,6 @@
-docker run --sa-db-postgres \
+docker run --name db-postgres-dev \
   -e POSTGRES_USER=postgres \
   -e POSTGRES_PASSWORD=sacadura10 \
-  -e POSTGRES_DB=sa-db-postgres \
+  -e POSTGRES_DB=db-postgres-dev \
   -p 5432:5432 \
-  -d postgres:17
+  -d postgres:16
