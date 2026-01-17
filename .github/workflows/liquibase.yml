@@ -29,22 +29,24 @@ jobs:
           docker build -t $IMAGE_NAME:$IMAGE_TAG .
           docker push $IMAGE_NAME:$IMAGE_TAG
 
-      # 🔐 Configura chave SSH
+      # 🔐 Configura chave SSH (usando SSH_KEY)
       - name: Configurar SSH key
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          echo "${{ secrets.SSH_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H $REMOTE_HOST >> ~/.ssh/known_hosts
 
       # ✅ Teste simples de conexão
       - name: Testar conexão SSH
         run: |
-          ssh -i ~/.ssh/id_rsa $SSH_USERNAME@$REMOTE_HOST "echo 'SSH conectado com sucesso'"
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no \
+            $SSH_USERNAME@$REMOTE_HOST "echo 'SSH conectado com sucesso'"
 
       - name: Garantir que a rede Docker existe no servidor remoto
         run: |
-          ssh -i ~/.ssh/id_rsa $SSH_USERNAME@$REMOTE_HOST <<EOF
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no \
+            $SSH_USERNAME@$REMOTE_HOST <<EOF
           set -e
           if ! docker network ls --format '{{.Name}}' | grep -q '^tbmt-rede-docker$'; then
             docker network create tbmt-rede-docker
@@ -53,7 +55,8 @@ jobs:
 
       - name: Rodar Liquibase remotamente
         run: |
-          ssh -i ~/.ssh/id_rsa $SSH_USERNAME@$REMOTE_HOST <<EOF
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no \
+            $SSH_USERNAME@$REMOTE_HOST <<EOF
           set -e
           docker pull $IMAGE_NAME:$IMAGE_TAG
 
