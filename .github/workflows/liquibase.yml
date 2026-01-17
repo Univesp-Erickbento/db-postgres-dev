@@ -1,0 +1,79 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ master]
+
+jobs:
+  liquibase:
+    runs-on: ubuntu-latest
+
+    env:
+      DB_URL: jdbc:postgresql://${{ secrets.SERVREMOTE_HOSTER_IP }}:5432/${{ secrets.POSTGRES_DB }}
+      DB_USERNAME: ${{ secrets.DB_USERNAME }}
+      DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+      SSH_USERNAME: ${{ secrets.SSH_USERNAME }}
+      SSH_PASSWORD: ${{ secrets.SSH_PASSWORD }}
+      REMOTE_HOST: ${{ secrets.REMOTE_HOST }}
+      POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
+      IMAGE_NAME: torresbento/liquibase-job
+      IMAGE_TAG: latest
+
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v3
+
+      - name: Login no Docker Hub
+        run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+
+      - name: Build e push da imagem Docker com Liquibase
+        run: |
+          docker build -t $IMAGE_NAME:$IMAGE_TAG .
+          docker push $IMAGE_NAME:$IMAGE_TAG
+
+      - name: Instalar sshpass
+        run: sudo apt-get install -y sshpass
+
+      - name: Verificar valores das variáveis de ambiente
+        run: |
+          echo "DB_URL: $DB_URL"
+          echo "DB_USERNAME: $DB_USERNAME"
+          echo "DB_PASSWORD: $DB_PASSWORD"
+
+      - name: Garantir que a rede Docker existe no servidor remoto
+        run: |
+          sshpass -p "$SSH_PASSWORD" ssh -o StrictHostKeyChecking=no "$SSH_USERNAME@$REMOTE_HOST" << EOF
+            set -e
+            echo "Autenticado no servidor remoto: \$(hostname)"
+
+            if ! docker network ls --format '{{.Name}}' | grep -q '^tbmt-rede-docker$'; then
+              echo "Rede tbmt-rede-docker não encontrada. Criando..."
+              docker network create tbmt-rede-docker
+            else
+              echo "Rede tbmt-rede-docker já existe."
+            fi
+          EOF
+
+      - name: Rodar a imagem Liquibase remotamente via SSH
+        run: |
+          sshpass -p "$SSH_PASSWORD" ssh -o StrictHostKeyChecking=no "$SSH_USERNAME@$REMOTE_HOST" << EOF
+            set -e
+            echo "Autenticado no servidor remoto: \$(hostname)"
+
+            echo "Pull da nova imagem Liquibase..."
+            docker pull $IMAGE_NAME:$IMAGE_TAG
+
+            echo "Executando container Liquibase com migrações..."
+            docker run --rm \
+              --network tbmt-rede-docker \
+              -e DB_URL="$DB_URL" \
+              -e DB_USERNAME="$DB_USERNAME" \
+              -e DB_PASSWORD="$DB_PASSWORD" \
+              $IMAGE_NAME:$IMAGE_TAG \
+              --changeLogFile=changelog/db.changelog-master.xml \
+              --url="$DB_URL" \
+              --username="$DB_USERNAME" \
+              --password="$DB_PASSWORD" \
+              --driver=org.postgresql.Driver \
+              update
+          EOF
