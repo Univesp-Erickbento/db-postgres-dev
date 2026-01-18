@@ -5,8 +5,8 @@
         xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.21.xsd">
 
-   <changeSet id="create-tabelas-v001" author="sa-db-postgres-erickbento">
-        <sqlFile path="../sql/V001__criar_tabelas_clientes.sql"
+   <changeSet id="create-tabelas-v001" author="postgres-dev-erickbento">
+        <sqlFile path="../sql/V001__criar_tabelas_pessoas_clientes_enderecos_funcionarios_login.sql"
                  relativeToChangelogFile="true"/>
     </changeSet>
 
