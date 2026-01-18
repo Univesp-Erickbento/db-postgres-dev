@@ -48,8 +48,8 @@ jobs:
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no \
             $SSH_USERNAME@$REMOTE_HOST <<EOF
           set -e
-          if ! docker network ls --format '{{.Name}}' | grep -q '^tbmt-rede-docker$'; then
-            docker network create tbmt-rede-docker
+          if ! docker network ls --format '{{.Name}}' | grep -q '^bmt-rede-docker$'; then
+            docker network create bmt-rede-docker
           fi
           EOF
 
@@ -61,7 +61,7 @@ jobs:
           docker pull $IMAGE_NAME:$IMAGE_TAG
 
           docker run --rm \
-            --network tbmt-rede-docker \
+            --network bmt-rede-docker \
             -e DB_URL="$DB_URL" \
             -e DB_USERNAME="$DB_USERNAME" \
             -e DB_PASSWORD="$DB_PASSWORD" \
